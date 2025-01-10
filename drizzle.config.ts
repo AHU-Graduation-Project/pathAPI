@@ -2,7 +2,7 @@ import type { Config } from 'drizzle-kit'
 
 export default <Partial<Config>>{
   strict: true,
-  schema: './src/db/schema.ts',
+  schema: './src/infra/db/schema.ts',
   out: './src/db/drizzle',
   dialect: 'postgresql',
   dbCredentials: {
