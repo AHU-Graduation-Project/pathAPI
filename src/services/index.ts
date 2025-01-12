@@ -1,4 +1,4 @@
-import { user, topic, roadmap, country } from '../infra/db/schema';
+import { user, topic, roadmap, country } from '../infrastructure/db/schema';
 
 export const schemas = {
   drizzle: {

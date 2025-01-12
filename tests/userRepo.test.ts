@@ -1,6 +1,6 @@
-import { userRepo } from '../src/infra/repos/userRepo';
+import UserRepo from '../src/infrastructure/repos/userRepo';
 import { db, insertEntry, getEntrys, updateEntry } from '../src/services/db.service';
-import { user } from '../src/infra/db/schema';
+import { User } from '../src/domain/entities/User';
 
 jest.mock('../src/services/db.service', () => ({
   db: {
@@ -20,8 +20,11 @@ jest.mock('../src/services/db.service', () => ({
 }));
 
 describe('UserRepo', () => {
+  let userRepo: UserRepo;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    userRepo = new UserRepo();
   });
 
   it('should get user by ID', async () => {
@@ -44,11 +47,19 @@ describe('UserRepo', () => {
     const mockUser = { id: 2, firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com' };
     (insertEntry as jest.Mock).mockResolvedValueOnce([mockUser]);
 
-    const userData = {
+    const userData: User = {
+      id: 2, // or generate a unique ID
       firstName: 'Jane',
       lastName: 'Smith',
       email: 'jane.smith@example.com',
-      password: 'password456'
+      password: 'password456',
+      position: 'Developer',
+      level: 'Junior',
+      country: 'USA',
+      isEmailConfirmed: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      profileImage: { data: 'imageData' },
     };
 
     const result = await userRepo.create(userData);
@@ -65,7 +76,18 @@ describe('UserRepo', () => {
       email: 'johnny.doe@example.com',
     };
 
-    const result = await userRepo.update(1, userData);
-    expect(result).toEqual(mockUser);
+    await userRepo.update(1, userData);
+    expect(updateEntry).toHaveBeenCalledWith('user', [{ id: 1 }], userData);
+  });
+
+  it('should get all users', async () => {
+    const mockUsers = [
+      { id: 1, firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
+      { id: 2, firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com' },
+    ];
+    (getEntrys as jest.Mock).mockResolvedValueOnce(mockUsers);
+
+    const result = await userRepo.getAll();
+    expect(result).toEqual(mockUsers);
   });
 });

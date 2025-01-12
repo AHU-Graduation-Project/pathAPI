@@ -1,6 +1,6 @@
-import { roadmapRepo } from '../src/infra/repos/roadmapRepo';
+import { roadmapRepo } from '../src/infrastructure/repos/roadmapRepo';
 import { db, insertEntry, getEntrys, updateEntry } from '../src/services/db.service';
-import { roadmap } from '../src/infra/db/schema';
+import { roadmap } from '../src/infrastructure/db/schema';
 
 jest.mock('../src/services/db.service', () => ({
   db: {
@@ -40,32 +40,24 @@ describe('RoadmapRepo', () => {
     expect(result).toEqual(mockRoadmap);
   });
 
-  it('should create a new roadmap', async () => {
+  it('should get roadmap by slug', async () => {
     const mockRoadmap = { id: 3, title: 'FrontEnd', description: 'front end web development', slug: 'frontend-roadmap', creator: null, isDeleted: false, isOfficial: true, createdAt: '2025-01-10T19:43:59.243523', updatedAt: '2025-01-10T19:43:59.243523' };
-    (insertEntry as jest.Mock).mockResolvedValueOnce([mockRoadmap]);
+    (getEntrys as jest.Mock).mockResolvedValueOnce([mockRoadmap]);
 
-    const roadmapData = {
-      title: 'FrontEnd',
-      description: 'front end web development',
-      slug: 'frontend-roadmap',
-      isOfficial: true,
-    };
-
-    const result = await roadmapRepo.create(roadmapData);
+    const result = await roadmapRepo.getBySlug('frontend-roadmap');
     expect(result).toEqual(mockRoadmap);
   });
 
-  it('should update an existing roadmap', async () => {
-    const mockRoadmap = { id: 1, title: 'Updated Roadmap', description: 'Updated description', slug: 'updated-roadmap', creator: 1, isDeleted: false, isOfficial: true, createdAt: '2024-12-29T00:09:19.264626', updatedAt: '2024-12-29T00:09:19.264626' };
-    (updateEntry as jest.Mock).mockResolvedValueOnce(mockRoadmap);
 
-    const roadmapData = {
-      title: 'Updated Roadmap',
-      description: 'Updated description',
-      slug: 'updated-roadmap',
-    };
 
-    const result = await roadmapRepo.update(1, roadmapData);
-    expect(result).toEqual(mockRoadmap);
+  it('should get all roadmaps', async () => {
+    const mockRoadmaps = [
+      { id: 1, title: 'Official Roadmap', description: 'Description for official roadmap', slug: 'official-roadmap', creator: 1, isDeleted: false, isOfficial: true, createdAt: '2024-12-29T00:09:19.264626', updatedAt: '2024-12-29T00:09:19.264626' },
+      { id: 2, title: 'User Roadmap', description: 'Description for user roadmap', slug: 'user-roadmap', creator: 1, isDeleted: false, isOfficial: false, createdAt: '2024-12-29T00:09:19.264626', updatedAt: '2024-12-29T00:09:19.264626' },
+    ];
+    (getEntrys as jest.Mock).mockResolvedValueOnce(mockRoadmaps);
+
+    const result = await roadmapRepo.getAll();
+    expect(result).toEqual(mockRoadmaps);
   });
 });

@@ -3,7 +3,7 @@
 ## Notes:
 
 ### All routes start with '/api/v1'
-### All endpoint will return the same response when server fails.
+### All endpoints will return the same response when the server fails.
 > - status code: 500
 > - response body: 
 >    ```json
@@ -11,7 +11,6 @@
 >        "message": "error message"
 >    }
 >    ```
->
 
 ## routes
 1.  `/auth`
@@ -21,7 +20,6 @@
       - Method: `POST`
       - Header: ''
       - Body:
-
         ```json
         {
           "email": "example@domain.com",
@@ -50,16 +48,14 @@
             "token": "the token"
           }
           ```
-      - Email is not exist
-
+      - Email does not exist
         - status code: `400`
         - response body
           ```json
           {
-            "message": "Email is not exist"
+            "message": "Email does not exist"
           }
           ```
-
       - Incorrect Password
         - status code: `401`
         - response body
@@ -104,12 +100,12 @@
               "token": "the token"
             }
             ```
-        - Email is already exist
+        - Email already exists
           - status code: `400`
           - response
             ```json
             {
-              "message": "Email is already exist"
+              "message": "Email already exists"
             }
             ```
 
@@ -133,12 +129,12 @@
             {}
              // Will send a link with a token to user email
             ```
-        - Email is not exist
+        - Email does not exist
           - status code: `400`
           - response
             ```json
             {
-              "message": "Email is not exist"
+              "message": "Email does not exist"
             }
             ```
 
@@ -233,4 +229,141 @@
               "message": "Access Denied" // token is incorrect
             }
             ```
+
+2.  `/roadmap`
+
+    - /GetById/{id}
+
+      - Method: `GET`
+      - Header: ''
+      - Responses:
+        - Success
+          - status code: `200`
+          - response body
+            ```json
+            {
+              "id": 1,
+              "title": "Official Roadmap",
+              "description": "Description for official roadmap",
+              "slug": "official-roadmap",
+              "creator": 1,
+              "isDeleted": false,
+              "isOfficial": true,
+              "createdAt": "2024-12-29T00:09:19.264626",
+              "updatedAt": "2024-12-29T00:09:19.264626"
+            }
+            ```
+        - Not Found
+          - status code: `404`
+          - response body
+            ```json
+            {
+              "message": "Roadmap not found"
+            }
+            ```
+
+    - /GetByTitle/{title}
+
+      - Method: `GET`
+      - Header: ''
+      - Responses:
+        - Success
+          - status code: `200`
+          - response body
+            ```json
+            {
+              "id": 2,
+              "title": "User Roadmap",
+              "description": "Description for user roadmap",
+              "slug": "user-roadmap",
+              "creator": 1,
+              "isDeleted": false,
+              "isOfficial": false,
+              "createdAt": "2024-12-29T00:09:19.264626",
+              "updatedAt": "2024-12-29T00:09:19.264626"
+            }
+            ```
+        - Not Found
+          - status code: `404`
+          - response body
+            ```json
+            {
+              "message": "Roadmap not found"
+            }
+            ```
+
+    - /GetBySlug/{slug}
+
+      - Method: `GET`
+      - Header: ''
+      - Responses:
+        - Success
+          - status code: `200`
+          - response body
+            ```json
+            {
+              "id": 3,
+              "title": "FrontEnd",
+              "description": "front end web development",
+              "slug": "frontend-roadmap",
+              "creator": null,
+              "isDeleted": false,
+              "isOfficial": true,
+              "createdAt": "2025-01-10T19:43:59.243523",
+              "updatedAt": "2025-01-10T19:43:59.243523"
+            }
+            ```
+        - Not Found
+          - status code: `404`
+          - response body
+            ```json
+            {
+              "message": "Roadmap not found"
+            }
+            ```
+
+    - /GetAll
+
+      - Method: `GET`
+      - Header: ''
+      - Responses:
+        - Success
+          - status code: `200`
+          - response body
+            ```json
+            [
+              {
+                "id": 1,
+                "title": "Official Roadmap",
+                "description": "Description for official roadmap",
+                "slug": "official-roadmap",
+                "creator": 1,
+                "isDeleted": false,
+                "isOfficial": true,
+                "createdAt": "2024-12-29T00:09:19.264626",
+                "updatedAt": "2024-12-29T00:09:19.264626"
+              },
+              {
+                "id": 2,
+                "title": "User Roadmap",
+                "description": "Description for user roadmap",
+                "slug": "user-roadmap",
+                "creator": 1,
+                "isDeleted": false,
+                "isOfficial": false,
+                "createdAt": "2024-12-29T00:09:19.264626",
+                "updatedAt": "2024-12-29T00:09:19.264626"
+              }
+            ]
+            ```
+        - Failed
+          - status code: `400`
+          - response body
+            ```json
+            {
+              "message": "Failed to get roadmaps"
+            }
+            ```
+
+
 
