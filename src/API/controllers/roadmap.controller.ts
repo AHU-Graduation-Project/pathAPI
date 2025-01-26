@@ -3,8 +3,9 @@ import { RoadmapService } from '../../application/service/roadmap.service';
 import { CustomError } from '../../application/exception/customError';
 import AuthenticatedRequest from '../types/AuthenticatedRequest';
 import { PutRoadmapDTO } from '../../domain/DTOs/roadmap/PutRoadmapDTO';
-import Logger from '../../infrastructure/logger/consoleLogger';
 import { IPatchBody } from '../types/roadmapsRequests';
+import { PostRoadmapDTO } from '../../domain/DTOs/roadmap/PostRoadmapDTO';
+import { titleToSlug } from '../utils/roadmap';
 
 export class RoadmapController {
   constructor(private readonly roadmapService: RoadmapService) {}
@@ -24,18 +25,56 @@ export class RoadmapController {
     }
   }
 
+  async createGenerated(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const { user, isEditor, body } = req;
+    const postedRoadmap: PostRoadmapDTO = {
+      ...body,
+      slug: titleToSlug(body.title),
+    };
+
+    try {
+      const roadmap = await this.roadmapService.create(
+        postedRoadmap,
+        user.id,
+        isEditor ?? false, //TODO: always send false to make it not-official roadmap
+      );
+      res.status(201).json({ success: true, roadmap });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async postRoadmapData(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const { user } = req;
+    const { topics, edges } = req.body as IPatchBody;
+    try {
+      const roadmap = await this.roadmapService.updateData(
+        Number(req.params.id),
+        topics,
+        edges,
+      );
+      res.status(200).json({ success: true, roadmap });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async update(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    const id = Number(req.params.id);
-    if (isNaN(id))
-      res
-        .status(400)
-        .send({ success: false, message: 'Invalid id, id must be a number' });
+    const slug = req.params.slug;
 
     const putRoadmap: PutRoadmapDTO = { ...req.body };
 
     try {
       const roadmap = await this.roadmapService.update(
-        id,
+        slug,
         putRoadmap,
         req.user.id,
       );
@@ -50,22 +89,26 @@ export class RoadmapController {
       if (!req.user.is_editor) {
         throw new CustomError('Not authorized', 403);
       }
-      await this.roadmapService.delete(parseInt(req.params.id));
+      await this.roadmapService.delete(req.params.string);
       res.status(204).send();
     } catch (error) {
       next(error);
     }
   }
 
-  async getById(req: Request, res: Response, next: NextFunction) {
-    const id = Number(req.params.id);
-    if (isNaN(id))
-      res
-        .status(400)
-        .send({ success: false, message: 'Invalid id, id must be a number' });
+  async getBySlug(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const slug = req.params.slug;
+    const user = req.user;
 
     try {
-      const roadmap = await this.roadmapService.getById(id);
+      const roadmap = await this.roadmapService.getBySlug(
+        slug,
+        (user && user.id) || 0,
+      );
       res.status(200).json({ success: true, roadmap });
     } catch (error) {
       next(error);
@@ -74,16 +117,27 @@ export class RoadmapController {
 
   async getAll(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     const { user, isEditor } = req;
+    const { page = 1, limit = 1000 } = req.query;
+
     try {
-      const roadmaps = await this.roadmapService.getAll(user.id, isEditor!);
+      const roadmaps = await this.roadmapService.getAll(
+        (user && user.id) || 0,
+        isEditor!,
+        page as number, // TODO: Safety check
+        limit as number,
+      );
       res.status(200).json({ success: true, data: roadmaps });
     } catch (error) {
       next(error);
     }
   }
 
-  async patch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    const id = Number(req.params.id);
+  async putRoadmapData(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    const id = Number(req.body.id);
     if (isNaN(id))
       res
         .status(400)
@@ -108,22 +162,54 @@ export class RoadmapController {
       next(error);
     }
   }
+
   async editResources(
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction,
-  ) {}
+  ) {
+    const { user } = req;
+    const { resources } = req.body;
+    try {
+      const updatedResources = await this.roadmapService.updateResources(
+        resources,
+        user.id,
+      );
+      res.status(200).json({ success: true, resources: updatedResources });
+    } catch (error) {
+      next(error);
+    }
+  }
 
   async publish(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    const id = Number(req.params.id);
+    const slug = req.params.slug;
     const { user } = req;
-    if (isNaN(id))
-      res
-        .status(400)
-        .send({ success: false, message: 'Invalid id, id must be a number' });
+
     try {
-      const roadmap = await this.roadmapService.updateVisibility(id, user.id);
+      const roadmap = await this.roadmapService.updateVisibility(slug, user.id);
       res.status(200).json({ success: true, roadmap });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async follow(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    const slug = req.params.slug;
+    const { user } = req;
+
+    try {
+      const roadmap = await this.roadmapService.follow(slug, user.id);
+      res.status(200).json({ success: true, roadmap });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getResources(req: Request, res: Response, next: NextFunction) {
+    const slug = req.params.slug;
+    try {
+      const resources = await this.roadmapService.getResources(slug);
+      res.status(200).json({ success: true, resources });
     } catch (error) {
       next(error);
     }

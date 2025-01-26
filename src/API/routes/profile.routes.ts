@@ -3,25 +3,26 @@ import { ProfileController } from '../controllers/profile.controller';
 import { ProfileService } from '../../application/service/profile.service';
 import { UserRepo } from '../../infrastructure/repos/UserRepo';
 import { authenticate } from '../middlewares/auth.guard';
+import doNotAllow from '../middlewares/dataRestriction.guard';
 
 const router = Router();
 
 const userRepo = UserRepo.instance;
 const profileService = new ProfileService(userRepo);
-const profileController = new ProfileController(profileService);
+const controller = new ProfileController(profileService);
 
-// Get user profile
 router.get(
   '/',
-  authenticate,
-  profileController.getProfile
+  doNotAllow('id', 'is_email_confirmed', 'is_editor'),
+  authenticate(),
+  controller.getProfile.bind(controller)
 );
 
-// Update user profile
 router.put(
   '/',
-  authenticate,
-  profileController.updateProfile.bind(profileController)
+  doNotAllow('id', 'email', 'password', 'is_email_confirmed', 'is_editor'),
+  authenticate(),
+  controller.updateProfile.bind(controller)
 );
 
 export default router;

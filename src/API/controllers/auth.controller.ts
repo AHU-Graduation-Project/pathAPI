@@ -14,6 +14,7 @@ import { isEditor } from '../../application/utils/roleDetermine';
 import Logger from '../../infrastructure/logger/consoleLogger';
 import { config } from '../../config';
 import { ServerError } from '../../application/exception/serverError';
+import PostmarkSender from '../../infrastructure/emailSender/postmarkSender';
 
 class AuthController {
   static userService: UserService;
@@ -26,7 +27,10 @@ class AuthController {
     res: Response,
     next: NextFunction,
   ): Promise<void> {
-    const postUser: PostUserDTO = req.body;
+    const postUser: PostUserDTO = {
+      ...req.body,
+      email: req.body.email.toLowerCase(),
+    };
     let user: GetUserDTO;
     try {
       user = await AuthController.userService.register(postUser);
@@ -46,7 +50,6 @@ class AuthController {
     );
     const token = generateAccess(user.id, user.email, false);
     const emailCTA = `${config.devPathUrl}/confirm-email?token=${confirmToken}`;
-    // TODO: Comment Out when sender is working
     // PostmarkSender.instance.confirmEmail(
     //   user.first_name,
     //   user.email,
@@ -59,11 +62,15 @@ class AuthController {
       emailCTA, // TODO: remove this when sender is working
     });
   }
+
   async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     const { email, password } = req.body;
     let user;
     try {
-      user = await AuthController.userService.login(email, password);
+      user = await AuthController.userService.login(
+        email?.toLowerCase(),
+        password,
+      );
     } catch (error: Error | any) {
       if (error instanceof CustomError) {
         next(error);
@@ -76,6 +83,7 @@ class AuthController {
     const accessToken = generateAccess(user.id, user.email, user.is_editor);
     res.status(200).send({ success: true, token: accessToken });
   }
+
   async requestPasswordRecovery(
     req: Request,
     res: Response,
@@ -107,6 +115,7 @@ class AuthController {
       emailCTA, // TODO: Remove this when sender is working
     });
   }
+
   async changePassword(
     req: AuthenticatedRequest,
     res: Response,
@@ -147,6 +156,7 @@ class AuthController {
     );
     res.status(200).send({ success: true, token });
   }
+
   async confirmEmail(
     req: AuthenticatedRequest,
     res: Response,

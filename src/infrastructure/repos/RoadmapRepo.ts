@@ -1,5 +1,6 @@
 import { CustomError } from '../../application/exception/customError';
 import { ServerError } from '../../application/exception/serverError';
+import { GetRoadmapDTO } from '../../domain/DTOs/roadmap/GetRoadmapDTO';
 import { PostRoadmapDTO } from '../../domain/DTOs/roadmap/PostRoadmapDTO';
 import { PutRoadmapDTO } from '../../domain/DTOs/roadmap/PutRoadmapDTO';
 import { IRoadmap } from '../../domain/entities/IRoadmap';
@@ -40,7 +41,7 @@ export class RoadmapRepo implements IRoadmapRepo {
     }
   }
 
-  async update(id: number, updateData: PutRoadmapDTO): Promise<IRoadmap> {
+  async update(slug: string, updateData: PutRoadmapDTO): Promise<IRoadmap> {
     const fields = Object.keys(updateData).filter(
       (key) =>
         updateData[key as keyof PutRoadmapDTO] !== undefined &&
@@ -59,12 +60,12 @@ export class RoadmapRepo implements IRoadmapRepo {
       (field) => updateData[field as keyof PutRoadmapDTO],
     );
 
-    queryValues.push(id);
+    queryValues.push(slug);
 
     const query = `
       UPDATE roadmap
       SET ${setClause}
-      WHERE id = $${queryValues.length}
+      WHERE slug = $${queryValues.length}
       RETURNING *
     `;
 
@@ -79,31 +80,19 @@ export class RoadmapRepo implements IRoadmapRepo {
     }
   }
 
-  async delete(id: number): Promise<void> {
-    const query = 'DELETE FROM roadmap WHERE id = $1';
+  async delete(slug: string): Promise<void> {
+    const query = 'DELETE FROM roadmap WHERE string = $1';
     try {
-      await pool.query(query, [id]);
+      await pool.query(query, [slug]);
     } catch (error: Error | any) {
       throw new CustomError(error.message, 500, 'RoadmapRepo.delete()');
     }
   }
 
-  async getById(id: number): Promise<IRoadmap> {
-    const query = 'SELECT * FROM roadmap WHERE id = $1';
-    try {
-      const result = await pool.query(query, [id]);
-      if (!result.rows[0]) {
-        throw new CustomError('Roadmap not found', 404);
-      }
-      return result.rows[0];
-    } catch (error: Error | any) {
-      throw new CustomError(error.message, 500, 'RoadmapRepo.getById()');
-    }
-  }
-
   async getBySlug(slug: string): Promise<IRoadmap> {
-    const query = 'SELECT * FROM roadmap WHERE slug = $1';
-    const values = [slug];
+    const query =
+      'SELECT *  FROM roadmap WHERE slug = $1';
+    const values = [slug.toLowerCase()];
     try {
       return (await pool.query(query, values)).rows[0];
     } catch (error: Error | any) {
@@ -111,13 +100,41 @@ export class RoadmapRepo implements IRoadmapRepo {
     }
   }
 
-  async getAll(): Promise<IRoadmap[]> {
-    const query = 'SELECT * FROM roadmap ORDER BY created_at DESC';
+  async getById(id: number): Promise<IRoadmap> {
+    const query =
+      'SELECT *  FROM roadmap WHERE id = $1';
+    const values = [id];
     try {
-      const result = await pool.query(query);
+      return (await pool.query(query, values)).rows[0];
+    } catch (error: Error | any) {
+      throw new ServerError(error.message, 500, 'RoadmapRepo.getBySlug()');
+    }
+  }
+
+  async getAll(page: number = 1, limit: number = 10): Promise<GetRoadmapDTO[]> {
+    const offset = (page - 1) * limit;
+    const query = `
+      SELECT id, title, description, slug, is_official, icon 
+      FROM roadmap 
+      WHERE visibility = 'public'
+      ORDER BY created_at DESC 
+      LIMIT $1 OFFSET $2
+      `;
+    try {
+      const result = await pool.query(query, [limit, offset]);
       return result.rows;
     } catch (error: Error | any) {
       throw new CustomError(error.message, 500, 'RoadmapRepo.getAll()');
+    }
+  }
+
+  async count(): Promise<number> {
+    const query = "SELECT COUNT(*) FROM roadmap WHERE visibility = 'public'";
+    try {
+      const result = await pool.query(query);
+      return result.rows[0].count;
+    } catch (error: Error | any) {
+      throw new CustomError(error.message, 500, 'RoadmapRepo.count()');
     }
   }
 
@@ -126,9 +143,9 @@ export class RoadmapRepo implements IRoadmapRepo {
       SELECT r.id, r.title, r.description, r.slug, r.icon, r.visibility, r.created_at, r.updated_at
       FROM public.roadmap r
       JOIN public.follow f ON f.roadmap = r.id
-      WHERE f.user_id=${userId} AND visibility!='hidden';`;
+      WHERE f.user_id=$1 AND visibility!='hidden';`;
     try {
-      const result = await pool.query(query);
+      const result = await pool.query(query, [userId]);
       return result.rows;
     } catch (error: Error | any) {
       throw new CustomError(error.message, 500, 'RoadmapRepo.getFollowed()');
@@ -142,6 +159,16 @@ export class RoadmapRepo implements IRoadmapRepo {
       return result.rows;
     } catch (error: Error | any) {
       throw new CustomError(error.message, 500, 'RoadmapRepo.getByCreator()');
+    }
+  }
+
+  async getId(slug: string): Promise<number> {
+    const query = 'SELECT id FROM roadmap WHERE slug = $1';
+    try {
+      const result = await pool.query(query, [slug]);
+      return result.rows?.[0]?.id;
+    } catch (error: Error | any) {
+      throw new CustomError(error.message, 500, 'RoadmapRepo.getId()');
     }
   }
 }
